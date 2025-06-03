@@ -1,35 +1,47 @@
 package network
 
-import converter.JSONConverter
-import serializer.JSONSerializer
+import network.headers.ContentTypeHeader
 
 data class HttpResponse(
     val status: HttpStatus = HttpStatus.OK,
-    val headers: Map<String, String> = emptyMap(),
-    val body: Any? = ""
+    val headers: HttpHeaders = HttpHeaders(),
+    val body: Any? = "",
+    val bodyRaw: String? = null
 ) {
     val contentSerializers: ContentSerializers = ContentSerializers()
 
-    fun encode(contentType: ContentType, body: Any?): String {
-        return when (contentType) {
-            ContentType.JSON -> encodeJson(body)
-            else -> throw UnsupportedOperationException("Encoding for $contentType not implemented yet.")
+    companion object {
+        /** Create a 200 OK response */
+        fun ok(body: Any? = "", headers: HttpHeaders = HttpHeaders()): HttpResponse {
+            return HttpResponse(status = HttpStatus.OK, headers = headers, body = body)
+        }
+
+        /** Create a 404 Not Found response */
+        fun notFound(body: Any? = "", headers: HttpHeaders = HttpHeaders()): HttpResponse {
+            return HttpResponse(status = HttpStatus.NOT_FOUND, headers = headers, body = body)
+        }
+
+        /** Create a 500 Internal Server Error response */
+        fun internalServerError(body: Any? = "", headers: HttpHeaders = HttpHeaders()): HttpResponse {
+            return HttpResponse(status = HttpStatus.INTERNAL_SERVER_ERROR, headers = headers, body = body)
         }
     }
 
-    private fun encodeJson(body: Any?): String {
-        val serializer = jsonSerializer
-            ?: throw IllegalStateException("No JSON serializer configured in BodyEncoder.")
+    /** Encode the body based on Content-Type header */
+    fun encode(): String {
+        val contentTypeHeader = headers.get("Content-Type") as? ContentTypeHeader
+        val contentTypeValue = contentTypeHeader?.value
+            ?: throw IllegalArgumentException("Content-Type header is missing or invalid.")
 
-        return serializer(body)
+        return contentSerializers.serialize(contentTypeValue, body)
     }
 
-    fun toRawResponse(): String {
-        val contentType = headers["Content-Type"]?.let { ContentType.values().find { it.value == it } }
-        val formattedBody = contentType?.encode(body) ?: body.toString()
-
+    /** Serialize the full HTTP response to a raw string */
+    fun serialize(): String {
         val statusLine = "HTTP/1.1 ${status.code} ${status.reason}"
-        val headerLines = headers.entries.joinToString("\r\n") { "${it.key}: ${it.value}" }
-        return listOf(statusLine, headerLines, "", body).joinToString("\r\n")
+        val headerLines = headers.serialize().map { (name, value) -> "$name: $value" }.joinToString("\r\n")
+        val bodyContent = encode()
+
+        return listOf(statusLine, headerLines, "", bodyContent).joinToString("\r\n")
     }
 }

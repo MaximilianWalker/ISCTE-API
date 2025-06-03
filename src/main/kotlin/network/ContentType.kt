@@ -8,8 +8,8 @@ enum class ContentType(val value: String) {
     MULTIPART("multipart/form-data");
 
     companion object {
-        fun fromHeader(value: String?): ContentType? {
-            return entries.firstOrNull { value?.startsWith(it.value, ignoreCase = true) == true }
+        fun fromHeader(value: String): ContentType? {
+            return entries.firstOrNull { it.value.equals(value, ignoreCase = true) }
         }
     }
 }
