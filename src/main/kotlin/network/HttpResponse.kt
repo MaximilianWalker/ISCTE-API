@@ -53,10 +53,6 @@ data class HttpResponse(
 
         val headersRaw = headers.serialize().map { (name, value) -> "$name: $value" }.joinToString("\r\n")
 
-        val requestList = mutableListOf(requestRaw, headersRaw, "", bodyRaw ?: "")
-//        bodyRaw?.let {
-//            requestList.add(it)
-//        }
-        return requestList.joinToString("\r\n")
+        return listOf(requestRaw, headersRaw, "", bodyRaw ?: "").joinToString("\r\n")
     }
 }
