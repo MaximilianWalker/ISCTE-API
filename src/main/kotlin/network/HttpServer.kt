@@ -130,8 +130,6 @@ class HttpServer(
                     }
                 }
 
-                println("dafuk")
-
                 // Read body if content length is specified
                 val body = if (contentLength > 0) {
                     val bodyChars = CharArray(contentLength)
@@ -150,8 +148,6 @@ class HttpServer(
                 } else {
                     ""
                 }
-
-                println("dafuk 2")
 
                 // Reconstruct the raw request for parsing
                 val rawRequest = buildString {

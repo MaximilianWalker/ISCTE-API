@@ -16,7 +16,9 @@ class PathMatcher(private val routePath: String) {
                 "([^/]+)"
             }
             // Escape special regex characters except for the ones we just added
-            .replace(Regex("([.+*?\\[\\]()^\\$])")) { "\\\${it.groupValues[1]}" }
+            .replace(Regex("([.+*?\\[\\]()^\\\$])")) { matchResult ->
+                "\\${matchResult.groupValues[1]}"
+            }
         
         regex = Regex("^$patternString$")
     }
