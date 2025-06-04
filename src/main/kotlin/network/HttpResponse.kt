@@ -1,12 +1,13 @@
 package network
 
+import network.headers.ContentLengthHeader
 import network.headers.ContentTypeHeader
 
 data class HttpResponse(
     val status: HttpStatus = HttpStatus.OK,
     val headers: HttpHeaders = HttpHeaders(),
-    val body: Any? = "",
-    val bodyRaw: String? = null
+    val body: Any? = null,
+    var bodyRaw: String? = null
 ) {
     val contentSerializers: ContentSerializers = ContentSerializers()
 
@@ -28,20 +29,34 @@ data class HttpResponse(
     }
 
     /** Encode the body based on Content-Type header */
-    fun encode(): String {
+    fun encode() {
+        if (body == null) {
+            bodyRaw = null
+            return
+        }
         val contentTypeHeader = headers.get("Content-Type") as? ContentTypeHeader
         val contentTypeValue = contentTypeHeader?.value
             ?: throw IllegalArgumentException("Content-Type header is missing or invalid.")
-
-        return contentSerializers.serialize(contentTypeValue, body)
+        bodyRaw = contentSerializers.serialize(contentTypeValue, body)
+        val contentLengthHeader = headers.get("Content-Length") as? ContentLengthHeader
+        contentLengthHeader?.setValue(bodyRaw!!.length)
     }
 
     /** Serialize the full HTTP response to a raw string */
     fun serialize(): String {
-        val statusLine = "HTTP/1.1 ${status.code} ${status.reason}"
-        val headerLines = headers.serialize().map { (name, value) -> "$name: $value" }.joinToString("\r\n")
-        val bodyContent = encode()
+        val requestRaw = "HTTP/1.1 ${status.code} ${status.reason}"
 
-        return listOf(statusLine, headerLines, "", bodyContent).joinToString("\r\n")
+        headers.fillResponseHeaders()
+
+        if (body != null)
+            encode()
+
+        val headersRaw = headers.serialize().map { (name, value) -> "$name: $value" }.joinToString("\r\n")
+
+        val requestList = mutableListOf(requestRaw, headersRaw, "", bodyRaw ?: "")
+//        bodyRaw?.let {
+//            requestList.add(it)
+//        }
+        return requestList.joinToString("\r\n")
     }
 }

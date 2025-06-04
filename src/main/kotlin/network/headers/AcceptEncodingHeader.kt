@@ -1,13 +1,6 @@
 package network.headers
 
 class AcceptEncodingHeader(value: List<String> = emptyList()) : HttpHeader<List<String>>("Accept-Encoding", value) {
-
-    companion object {
-        var isMandatoryOnRequest: Boolean = true
-        var isMandatoryOnResponse: Boolean = false
-        init { register("Accept-Encoding", AcceptEncodingHeader::class) }
-    }
-
     override fun validate(): Boolean = value?.isNotEmpty() ?: false
 
     override fun parse(raw: String) {

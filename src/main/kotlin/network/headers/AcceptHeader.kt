@@ -3,13 +3,6 @@ package network.headers
 import network.ContentType
 
 class AcceptHeader(value: List<ContentType> = emptyList()) : HttpHeader<List<ContentType>>("Accept", value) {
-
-    companion object {
-        var isMandatoryOnRequest: Boolean = true
-        var isMandatoryOnResponse: Boolean = false
-        init { register("Accept", AcceptHeader::class) }
-    }
-
     override fun validate(): Boolean = value?.all { ContentType.fromHeader(it.value) != null } ?: false
 
     override fun parse(raw: String) {

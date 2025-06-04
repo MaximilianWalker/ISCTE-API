@@ -1,36 +1,71 @@
 package network.headers
 
 import kotlin.reflect.KClass
-import kotlin.reflect.KProperty
-import kotlin.reflect.full.companionObject
 import core.instantiateWithDefaultConstructor
+
+import network.headers.AcceptEncodingHeader
+import network.headers.AcceptHeader
+import network.headers.AcceptLanguageHeader
+import network.headers.AuthorizationHeader
+import network.headers.CacheControlHeader
+import network.headers.ConnectionHeader
+import network.headers.ContentLengthHeader
+import network.headers.ContentTypeHeader
+import network.headers.CookieHeader
+import network.headers.HostHeader
+import network.headers.ServerHeader
+import network.headers.SetCookieHeader
+import network.headers.UserAgentHeader
 
 abstract class HttpHeader<T>(val name: String, initialValue: T? = null) {
     var value: T? = initialValue
         private set
 
     companion object {
-        var isMandatoryOnRequest: Boolean = false
-            private set
-        var isMandatoryOnResponse: Boolean = false
-            private set
+        val subclasses: Map<String, KClass<out HttpHeader<*>>> = mapOf(
+            "Accept" to AcceptHeader::class,
+            "Accept-Encoding" to AcceptEncodingHeader::class,
+            "Accept-Language" to AcceptLanguageHeader::class,
+            "Authorization" to AuthorizationHeader::class,
+            "Cache-Control" to CacheControlHeader::class,
+            "Connection" to ConnectionHeader::class,
+            "Content-Length" to ContentLengthHeader::class,
+            "Content-Type" to ContentTypeHeader::class,
+            "Cookie" to CookieHeader::class,
+            "Host" to HostHeader::class,
+            "Server" to ServerHeader::class,
+            "Set-Cookie" to SetCookieHeader::class,
+            "User-Agent" to UserAgentHeader::class
+        )
+        
+        val mandatoryRequestHeaders: Set<KClass<out HttpHeader<*>>> = setOf(
+            AcceptHeader::class,
+            AcceptEncodingHeader::class,
+            ConnectionHeader::class,
+            HostHeader::class,
+            UserAgentHeader::class
+        )
+        
+        val mandatoryResponseHeaders: Set<KClass<out HttpHeader<*>>> = setOf(
+            ContentTypeHeader::class,
+            ContentLengthHeader::class,
+            ConnectionHeader::class,
+            CacheControlHeader::class,
+            ServerHeader::class
+        )
 
-        private val subclasses = mutableMapOf<String, KClass<out HttpHeader<*>>>()
-
-        fun register(name: String, clazz: KClass<out HttpHeader<*>>) {
-            subclasses[name] = clazz
-        }
-
-        fun getSubclasses(): List<KClass<out HttpHeader<*>>> = subclasses.values.toList()
-
+        /**
+         * Get header class by header name
+         */
         fun getClassByHeader(headerName: String): KClass<out HttpHeader<*>>? = subclasses[headerName]
-
-        fun setMandatoryOnRequest(mandatory: Boolean) {
-            isMandatoryOnRequest = mandatory
-        }
-
-        fun setMandatoryOnResponse(mandatory: Boolean) {
-            isMandatoryOnResponse = mandatory
+        
+        /**
+         * Get the header name for a specific HttpHeader class.
+         * @param headerClass The class of the header
+         * @return The name of the header, or null if the class is not registered
+         */
+        fun getHeaderByClass(headerClass: KClass<out HttpHeader<*>>): String? {
+            return subclasses.entries.find { it.value == headerClass }?.key
         }
         
         /**
@@ -48,28 +83,6 @@ abstract class HttpHeader<T>(val name: String, initialValue: T? = null) {
             } catch (e: Exception) {
                 println("Error parsing unknown header: '$headerName'")
                 return null
-            }
-        }
-
-        fun getMandatoryRequestHeaders(): List<KClass<out HttpHeader<*>>> {
-            return getSubclasses().filter { clazz ->
-                val companion = clazz.companionObject
-                    ?: throw IllegalStateException("Header class ${clazz.simpleName} is missing companion object")
-                val property = companion.members.find { it.name == "isMandatoryOnRequest" } as? KProperty<*>
-                    ?: throw IllegalStateException("Header class ${clazz.simpleName} is missing isMandatoryOnRequest property")
-                property.getter.call(companion.objectInstance) as? Boolean
-                    ?: throw IllegalStateException("Header class ${clazz.simpleName} has invalid isMandatoryOnRequest value")
-            }
-        }
-
-        fun getMandatoryResponseHeaders(): List<KClass<out HttpHeader<*>>> {
-            return getSubclasses().filter { clazz ->
-                val companion = clazz.companionObject
-                    ?: throw IllegalStateException("Header class ${clazz.simpleName} is missing companion object")
-                val property = companion.members.find { it.name == "isMandatoryOnResponse" } as? KProperty<*>
-                    ?: throw IllegalStateException("Header class ${clazz.simpleName} is missing isMandatoryOnResponse property")
-                property.getter.call(companion.objectInstance) as? Boolean
-                    ?: throw IllegalStateException("Header class ${clazz.simpleName} has invalid isMandatoryOnResponse value")
             }
         }
     }

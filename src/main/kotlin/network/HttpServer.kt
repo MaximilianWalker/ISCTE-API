@@ -81,7 +81,6 @@ class HttpServer(
         while (running.get()) {
             try {
                 val clientSocket = serverSocket?.accept() ?: break
-                println("found a client")
                 thread {
                     handleClient(clientSocket)
                 }
@@ -104,7 +103,6 @@ class HttpServer(
     }
 
     private fun handleClient(socket: Socket) {
-        println("inside a client")
         socket.soTimeout = options.connectionTimeoutMillis.toInt()
 
         socket.use {
@@ -172,7 +170,6 @@ class HttpServer(
                 val response = handler(request)
                 response.headers.add(ServerHeader(options.serverName))
                 writeResponse(output, response)
-
             } catch (e: Exception) {
                 e.printStackTrace()
                 writeResponse(
@@ -192,6 +189,7 @@ class HttpServer(
 
     private fun writeResponse(output: OutputStream, response: HttpResponse) {
         val raw = response.serialize()
+        println(raw)
         output.write(raw.toByteArray(Charsets.UTF_8))
         output.flush()
     }

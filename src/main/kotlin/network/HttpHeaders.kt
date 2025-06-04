@@ -36,10 +36,8 @@ class HttpHeaders(headers: List<HttpHeader<*>> = emptyList()) {
             }
             
             // Validate mandatory headers are present
-            val mandatoryHeaders = HttpHeader.getMandatoryRequestHeaders()
-            for (headerClass in mandatoryHeaders) {
-                val headerName = headerClass.simpleName?.replace("Header", "") ?: ""
-                
+            for (headerClass in HttpHeader.mandatoryRequestHeaders) {
+                val headerName = HttpHeader.getHeaderByClass(headerClass)
                 if (!headers.headers.keys.any { it.equals(headerName, ignoreCase = true) }) {
                     throw IllegalArgumentException("Invalid request: Mandatory header $headerName is missing.")
                 }
@@ -51,37 +49,34 @@ class HttpHeaders(headers: List<HttpHeader<*>> = emptyList()) {
 
     /** Add or replace a header */
     fun add(header: HttpHeader<*>) {
-        headers[header.name.lowercase()] = header
+        headers[header.name] = header
     }
 
     /** Get header by name (case-insensitive) */
-    fun get(name: String): HttpHeader<*>? = headers[name.lowercase()]
+    fun get(name: String): HttpHeader<*>? = headers[name]
 
-    /** Serialize all headers to a map of name -> serialized value (string) */
-    fun serialize(): Map<String, String> {
-        val mandatoryHeaders = HttpHeader.getMandatoryResponseHeaders()
-        
-        // Check for missing mandatory headers and add them if possible
-        mandatoryHeaders.forEach { headerClass ->
-            val headerName = headerClass.simpleName?.replace("Header", "") ?: ""
-            val key = headerName.lowercase()
+    /** Check for missing mandatory headers and add them if possible */
+    fun fillResponseHeaders() {
+        HttpHeader.mandatoryResponseHeaders.forEach { headerClass ->
+            val key = HttpHeader.getHeaderByClass(headerClass)
             if (!headers.containsKey(key)) {
                 try {
                     // Try to create a default instance of the header
                     val defaultHeader = headerClass.instantiateWithDefaultConstructor()
-                    
+
                     if (defaultHeader != null) {
                         add(defaultHeader)
                     } else {
-                        throw IllegalArgumentException("Mandatory header $headerName is missing and has no default constructor.")
+                        throw IllegalArgumentException("Mandatory header \"$key\" is missing and has no default constructor.")
                     }
                 } catch (e: Exception) {
-                    throw IllegalArgumentException("Mandatory header $headerName is missing and could not be created: ${e.message}")
+                    throw IllegalArgumentException("Mandatory header \"$key\" is missing and could not be created: ${e.message}")
                 }
             }
         }
-        
-        // Convert headers to map of strings
+    }
+
+    fun serialize(): Map<String, String> {
         return headers.mapNotNull { (key, header) ->
             val serializedValue = header.serialize()
             if (serializedValue.isNotEmpty()) header.name to serializedValue else null

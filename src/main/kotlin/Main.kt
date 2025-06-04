@@ -5,7 +5,7 @@ fun main() {
     val server = HttpServer(
         "127.0.0.1", 5002,
         { req ->
-            HttpResponse.ok("Request handled")
+            HttpResponse()
         }
     )
     server.start()

@@ -1,13 +1,6 @@
 package network.headers
 
 class CookieHeader(value: Map<String, String> = emptyMap()) : HttpHeader<Map<String, String>>("Cookie", value) {
-
-    companion object {
-        var isMandatoryOnRequest: Boolean = false
-        var isMandatoryOnResponse: Boolean = false
-        init { register("Cookie", CookieHeader::class) }
-    }
-
     override fun validate(): Boolean = value?.isNotEmpty() ?: false
 
     override fun parse(raw: String) {

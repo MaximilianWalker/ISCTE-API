@@ -1,13 +1,6 @@
 package network.headers
 
 class CacheControlHeader(value: List<String> = emptyList()) : HttpHeader<List<String>>("Cache-Control", value) {
-
-    companion object {
-        var isMandatoryOnRequest: Boolean = false
-        var isMandatoryOnResponse: Boolean = true
-        init { register("Cache-Control", CacheControlHeader::class) }
-    }
-
     override fun validate(): Boolean = value?.isNotEmpty() ?: false
 
     override fun parse(raw: String) {
