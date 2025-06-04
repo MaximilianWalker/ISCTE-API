@@ -1,9 +1,6 @@
 package core
 
-import network.HttpRequest
-import network.HttpHeaders
-import network.HttpResponse
-import network.ContentType
+import network.*
 import network.headers.ContentTypeHeader
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -41,7 +38,7 @@ class IscteAPITest {
         val router = api::class.java.getDeclaredField("router").apply { isAccessible = true }.get(api) as Router
         
         // Create a simple request to check if the route exists
-        val request = HttpRequest("GET", "/api/users", HttpHeaders(), null)
+        val request = HttpRequest(HttpMethod.GET, "/api/users", HttpHeaders(), null)
         val response = router::class.java.getDeclaredMethod("resolve", HttpRequest::class.java)
             .apply { isAccessible = true }
             .invoke(router, request) as HttpResponse
@@ -51,7 +48,7 @@ class IscteAPITest {
     
     @Test
     fun `test get all users`() {
-        val request = HttpRequest("GET", "/api/users", HttpHeaders(), null)
+        val request = HttpRequest(HttpMethod.GET, "/api/users", HttpHeaders(), null)
         val response = api.handleRequest(request)
         
         assertEquals(200, response.status.code)
@@ -59,7 +56,7 @@ class IscteAPITest {
     
     @Test
     fun `test get user by id`() {
-        val request = HttpRequest("GET", "/api/users/1", HttpHeaders(), null)
+        val request = HttpRequest(HttpMethod.GET, "/api/users/1", HttpHeaders(), null)
         val response = api.handleRequest(request)
         
         assertEquals(200, response.status.code)
@@ -70,7 +67,7 @@ class IscteAPITest {
         val headers = HttpHeaders()
         headers.add(ContentTypeHeader(ContentType.JSON))
         
-        val request = HttpRequest("POST", "/api/users", headers, """{"name": "New User", "email": "new@example.com"}""")
+        val request = HttpRequest(HttpMethod.POST, "/api/users", headers, """{"name": "New User", "email": "new@example.com"}""")
         val response = api.handleRequest(request)
         
         assertEquals(200, response.status.code)
@@ -81,7 +78,7 @@ class IscteAPITest {
         val headers = HttpHeaders()
         headers.add(ContentTypeHeader(ContentType.JSON))
         
-        val request = HttpRequest("PUT", "/api/users/1", headers, """{"name": "Updated Name", "email": "updated@example.com"}""")
+        val request = HttpRequest(HttpMethod.PUT, "/api/users/1", headers, """{"name": "Updated Name", "email": "updated@example.com"}""")
         val response = api.handleRequest(request)
         
         assertEquals(200, response.status.code)
@@ -89,7 +86,7 @@ class IscteAPITest {
     
     @Test
     fun `test delete user`() {
-        val request = HttpRequest("DELETE", "/api/users/1", HttpHeaders(), null)
+        val request = HttpRequest(HttpMethod.DELETE, "/api/users/1", HttpHeaders(), null)
         val response = api.handleRequest(request)
         
         assertEquals(200, response.status.code)
@@ -98,7 +95,7 @@ class IscteAPITest {
     
     @Test
     fun `test delete non-existent user`() {
-        val request = HttpRequest("DELETE", "/api/users/999", HttpHeaders(), null)
+        val request = HttpRequest(HttpMethod.DELETE, "/api/users/999", HttpHeaders(), null)
         val response = api.handleRequest(request)
         
         assertEquals(404, response.status.code)
@@ -106,7 +103,7 @@ class IscteAPITest {
     
     @Test
     fun `test route not found`() {
-        val request = HttpRequest("GET", "/api/invalid", HttpHeaders(), null)
+        val request = HttpRequest(HttpMethod.GET, "/api/invalid", HttpHeaders(), null)
         val response = api.handleRequest(request)
         
         assertEquals(404, response.status.code)

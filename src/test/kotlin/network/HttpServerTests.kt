@@ -35,7 +35,7 @@ class HttpServerTests {
         val server = HttpServer(
             "127.0.0.1", 5002,
             { req ->
-                assertEquals("GET", req.method)
+                assertEquals(HttpMethod.GET, req.method)
                 assertEquals("/test", req.path)
                 HttpResponse.ok("Request handled")
             }

@@ -12,7 +12,7 @@ class ConnectionHeader(value: ConnectionValue = ConnectionValue.CLOSE) : HttpHea
 
     override fun parse(raw: String) {
         val newValue = try {
-            ConnectionValue.valueOf(raw.uppercase())
+            ConnectionValue.valueOf(raw.uppercase().replace("-", "_"))
         } catch (e: IllegalArgumentException) {
             throw IllegalArgumentException("Invalid Connection value: $raw. Allowed values are: ${ConnectionValue.entries.joinToString()}")
         }

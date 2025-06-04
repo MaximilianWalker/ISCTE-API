@@ -1,12 +1,13 @@
 package core
 
+import network.HttpMethod
 import network.HttpRequest
 import network.HttpResponse
 
 class Router {
     // Using a more complex structure for routes to support path parameters
     private data class RouteEntry(
-        val method: String,
+        val method: HttpMethod,
         val pathMatcher: PathMatcher,
         val handler: (HttpRequest, Map<String, String>) -> HttpResponse
     )
@@ -14,27 +15,27 @@ class Router {
     private val routes = mutableListOf<RouteEntry>()
 
     fun get(path: String, handler: (HttpRequest) -> HttpResponse) {
-        registerRoute("GET", path, { req, params -> handler(req.copy(pathParams = params)) })
+        registerRoute(HttpMethod.GET, path, { req, params -> handler(req.copy(pathParams = params)) })
     }
 
     fun post(path: String, handler: (HttpRequest) -> HttpResponse) {
-        registerRoute("POST", path, { req, params -> handler(req.copy(pathParams = params)) })
+        registerRoute(HttpMethod.POST, path, { req, params -> handler(req.copy(pathParams = params)) })
     }
     
     fun put(path: String, handler: (HttpRequest) -> HttpResponse) {
-        registerRoute("PUT", path, { req, params -> handler(req.copy(pathParams = params)) })
+        registerRoute(HttpMethod.PUT, path, { req, params -> handler(req.copy(pathParams = params)) })
     }
     
     fun delete(path: String, handler: (HttpRequest) -> HttpResponse) {
-        registerRoute("DELETE", path, { req, params -> handler(req.copy(pathParams = params)) })
+        registerRoute(HttpMethod.DELETE, path, { req, params -> handler(req.copy(pathParams = params)) })
     }
     
     fun patch(path: String, handler: (HttpRequest) -> HttpResponse) {
-        registerRoute("PATCH", path, { req, params -> handler(req.copy(pathParams = params)) })
+        registerRoute(HttpMethod.PATCH, path, { req, params -> handler(req.copy(pathParams = params)) })
     }
     
     private fun registerRoute(
-        method: String, 
+        method: HttpMethod,
         path: String, 
         handler: (HttpRequest, Map<String, String>) -> HttpResponse
     ) {

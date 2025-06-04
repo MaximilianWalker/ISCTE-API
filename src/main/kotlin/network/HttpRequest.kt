@@ -1,7 +1,7 @@
 package network
 
 data class HttpRequest(
-    val method: String,
+    val method: HttpMethod,
     val path: String,
     val headers: HttpHeaders,
     val body: Any?,
@@ -13,7 +13,10 @@ data class HttpRequest(
             println(rawRequest)
             val (requestLine, headerLines, bodyLines) = splitRawRequest(rawRequest)
 
-            val (method, path) = parseRequestLine(requestLine)
+            val (methodString, path) = parseRequestLine(requestLine)
+
+            val method = HttpMethod.fromString(methodString)
+
             val rawHeaders = parseHeaders(headerLines)
 
             val headers = HttpHeaders.parse(rawHeaders)

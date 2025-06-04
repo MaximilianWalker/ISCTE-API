@@ -38,12 +38,9 @@ abstract class HttpHeader<T>(val name: String, initialValue: T? = null) {
             "User-Agent" to UserAgentHeader::class
         )
         
+        // According to HTTP/1.1 spec (RFC 7231), only Host header is mandatory
         val mandatoryRequestHeaders: Set<KClass<out HttpHeader<*>>> = setOf(
-            AcceptHeader::class,
-            AcceptEncodingHeader::class,
-            ConnectionHeader::class,
-            HostHeader::class,
-            UserAgentHeader::class
+            HostHeader::class
         )
         
         val mandatoryResponseHeaders: Set<KClass<out HttpHeader<*>>> = setOf(
@@ -81,6 +78,7 @@ abstract class HttpHeader<T>(val name: String, initialValue: T? = null) {
                 header.parse(rawValue)
                 return header
             } catch (e: Exception) {
+                e.printStackTrace()
                 println("Error parsing unknown header: '$headerName'")
                 return null
             }
