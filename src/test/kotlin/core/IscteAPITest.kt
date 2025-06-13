@@ -10,7 +10,7 @@ import kotlin.reflect.KClass
 
 class IscteAPITest {
     private lateinit var api: IscteAPI
-    private val port = 3456 // Using a different port for tests
+    private val port = 5200 // Using a different port for tests
     
     @BeforeEach
     fun setUp() {

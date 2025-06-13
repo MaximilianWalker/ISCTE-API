@@ -92,13 +92,6 @@ data class HttpRequest(
                     headers[key] = value
                 }
             }
-            println("kek")
-            println(headerLines)
-            println("lol")
-            println(headers)
-            if(headerLines.size > 0 && headers.size == 0){
-                println("something is freaking wrong")
-            }
             return HttpHeaders.parse(headers)
         }
     }

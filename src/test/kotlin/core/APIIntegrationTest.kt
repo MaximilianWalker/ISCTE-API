@@ -16,7 +16,7 @@ import java.net.URL
  */
 class APIIntegrationTest {
     private lateinit var api: IscteAPI
-    private val port = 3457 // Use a unique port for these integration tests
+    private val port = 5100 // Use a unique port for these integration tests
     private val baseUrl = "http://localhost:$port"
     private var serverThread: Thread? = null
     
