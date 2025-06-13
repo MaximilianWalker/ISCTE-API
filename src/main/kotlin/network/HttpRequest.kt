@@ -1,15 +1,22 @@
 package network
 
+import network.headers.ContentLengthHeader
+import network.headers.ContentTypeHeader
+
 data class HttpRequest(
     val method: HttpMethod,
     val path: String,
     val headers: HttpHeaders,
     val body: Any?,
-    val pathParams: Map<String, String> = emptyMap(),
-    val queryParams: Map<String, String> = emptyMap()
+    var bodyRaw: String? = null,
+    val queryParams: Map<String, String> = emptyMap(),
+    val contentDeserializers: ContentDeserializers = ContentDeserializers()
 ) {
     companion object {
-        fun parse(rawRequest: String): HttpRequest {
+        fun parse(
+            rawRequest: String,
+            contentDeserializers: ContentDeserializers = ContentDeserializers()
+        ): HttpRequest {
             println(rawRequest)
             val (requestLine, headerLines, bodyLines) = splitRawRequest(rawRequest)
 
@@ -17,29 +24,43 @@ data class HttpRequest(
 
             val method = HttpMethod.fromString(methodString)
 
-            val rawHeaders = parseHeaders(headerLines)
+            val headers = parseHeaders(headerLines)
 
-            val headers = HttpHeaders.parse(rawHeaders)
+            val contentType = (headers.get("Content-Type") as ContentTypeHeader).value
+            val contentLength = (headers.get("Content-Length") as ContentLengthHeader).value ?: 0
 
-            val contentLength = rawHeaders["Content-Length"]?.toIntOrNull() ?: 0
-            val body = parseBody(bodyLines, contentLength)
-            
+            var bodyRaw: String? = null
+            var body: Any? = null
+
+            if (contentType != null && contentLength > 0 && bodyLines.isNotEmpty()){
+                 bodyRaw = bodyLines.joinToString("\n")
+                 body = contentDeserializers.deserialize(contentType, bodyRaw)
+            }
+
             val (cleanPath, queryParams) = extractQueryParams(path)
 
-            return HttpRequest(method, cleanPath, headers, body, queryParams = queryParams)
+            return HttpRequest(
+                method,
+                cleanPath,
+                headers,
+                body,
+                bodyRaw,
+                queryParams = queryParams,
+                contentDeserializers = contentDeserializers
+            )
         }
 
         private fun extractQueryParams(path: String): Pair<String, Map<String, String>> {
             val parts = path.split("?", limit = 2)
             if (parts.size < 2) return path to emptyMap()
-            
+
             val cleanPath = parts[0]
             val queryString = parts[1]
             val queryParams = queryString.split("&").mapNotNull {
                 val param = it.split("=", limit = 2)
                 if (param.size == 2) param[0] to param[1] else null
             }.toMap()
-            
+
             return cleanPath to queryParams
         }
 
@@ -48,7 +69,8 @@ data class HttpRequest(
             if (lines.isEmpty()) throw IllegalArgumentException("Invalid request")
             val requestLine = lines[0]
             val emptyLineIndex = lines.indexOfFirst { it.isEmpty() }
-            val headerLines = if (emptyLineIndex != -1) lines.subList(1, emptyLineIndex) else lines.subList(1, lines.size)
+            val headerLines =
+                if (emptyLineIndex != -1) lines.subList(1, emptyLineIndex) else lines.subList(1, lines.size)
             val bodyLines = if (emptyLineIndex != -1) lines.subList(emptyLineIndex + 1, lines.size) else emptyList()
 
             return Triple(requestLine, headerLines, bodyLines)
@@ -60,7 +82,7 @@ data class HttpRequest(
             return parts[0] to parts[1]
         }
 
-        private fun parseHeaders(headerLines: List<String>): Map<String, String> {
+        private fun parseHeaders(headerLines: List<String>): HttpHeaders {
             val headers = mutableMapOf<String, String>()
             for (line in headerLines) {
                 val splitIndex = line.indexOf(": ")
@@ -70,13 +92,7 @@ data class HttpRequest(
                     headers[key] = value
                 }
             }
-            return headers
-        }
-
-        private fun parseBody(bodyLines: List<String>, contentLength: Int): String? {
-            return if (contentLength > 0 && bodyLines.isNotEmpty()) {
-                bodyLines.joinToString("\n")
-            } else null
+            return HttpHeaders.parse(headers)
         }
     }
 }

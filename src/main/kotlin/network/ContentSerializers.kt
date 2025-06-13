@@ -38,22 +38,28 @@ class ContentSerializers {
                 val serializer = jsonSerializer ?: throw IllegalStateException("No JSON serializer registered")
                 (serializer as Serializer<T, String, *>).serialize(input)
             }
+
             ContentType.TEXT -> {
                 val serializer = textSerializer ?: throw IllegalStateException("No Text serializer registered")
                 (serializer as Serializer<T, String, *>).serialize(input)
             }
+
             ContentType.HTML -> {
                 val serializer = htmlSerializer ?: throw IllegalStateException("No HTML serializer registered")
                 (serializer as Serializer<T, String, *>).serialize(input)
             }
+
             ContentType.FORM -> {
                 val serializer = formSerializer ?: throw IllegalStateException("No Form serializer registered")
                 (serializer as Serializer<T, String, *>).serialize(input)
             }
+
             ContentType.MULTIPART -> {
-                val serializer = multipartSerializer ?: throw IllegalStateException("No Multipart serializer registered")
+                val serializer =
+                    multipartSerializer ?: throw IllegalStateException("No Multipart serializer registered")
                 (serializer as Serializer<T, String, *>).serialize(input)
             }
+
             else -> throw NotImplementedError("Serialization for $contentType is not implemented yet")
         }
     }

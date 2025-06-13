@@ -23,6 +23,7 @@ class HttpServer(
     private val handler: (HttpRequest) -> HttpResponse,
     private val options: HttpServerOptions = HttpServerOptions()
 ) {
+    private val contentDeserializers: ContentDeserializers = ContentDeserializers()
     private val contentSerializers: ContentSerializers = ContentSerializers()
     private var serverSocket: ServerSocket? = null
     private val running = AtomicBoolean(false)
@@ -160,7 +161,7 @@ class HttpServer(
                     append(body)
                 }
 
-                val request = HttpRequest.parse(rawRequest)
+                val request = HttpRequest.parse(rawRequest, contentDeserializers)
 
                 println("[${request.method}] ${request.path}")
                 if (options.logRequests) {
@@ -168,6 +169,7 @@ class HttpServer(
                 }
 
                 val response = handler(request)
+                response.contentSerializers = contentSerializers
                 response.headers.add(ServerHeader(options.serverName))
                 writeResponse(output, response)
             } catch (e: Exception) {

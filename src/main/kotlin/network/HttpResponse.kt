@@ -7,14 +7,18 @@ data class HttpResponse(
     val status: HttpStatus = HttpStatus.OK,
     val headers: HttpHeaders = HttpHeaders(),
     val body: Any? = null,
-    var bodyRaw: String? = null
+    var bodyRaw: String? = null,
+    var contentSerializers: ContentSerializers = ContentSerializers()
 ) {
-    val contentSerializers: ContentSerializers = ContentSerializers()
-
     companion object {
         /** Create a 200 OK response */
         fun ok(body: Any? = "", headers: HttpHeaders = HttpHeaders()): HttpResponse {
             return HttpResponse(status = HttpStatus.OK, headers = headers, body = body)
+        }
+
+        /** Create a 400 Bad Request response */
+        fun badRequest(body: Any? = "", headers: HttpHeaders = HttpHeaders()): HttpResponse {
+            return HttpResponse(status = HttpStatus.BAD_REQUEST, headers = headers, body = body)
         }
 
         /** Create a 404 Not Found response */

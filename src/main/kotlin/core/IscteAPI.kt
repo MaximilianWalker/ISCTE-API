@@ -1,5 +1,6 @@
 package core
 
+import inference.JSONInference
 import network.HttpMethod
 import network.HttpRequest
 import network.HttpResponse
@@ -19,7 +20,7 @@ class IscteAPI(
         { request -> handleRequest(request) }
     )
     private val router: Router = Router()
-    private val controllers = mutableListOf<Any>() // Store controller instances instead of classes
+    private val controllers = mutableListOf<Any>()
     private val middlewares = mutableListOf<(HttpRequest) -> HttpRequest>()
 
     fun registerController(controllerClass: KClass<*>) {
@@ -86,21 +87,26 @@ class IscteAPI(
         methodPath: String,
         httpMethod: HttpMethod
     ) {
-        // Construct the full path
         val fullPath = normalizePath("$controllerPath/$methodPath")
 
         println("Registering route: ${httpMethod.name} $fullPath")
 
-        // Create the handler function
-        val handler = { request: HttpRequest ->
-            // Extract parameters from the request based on annotations
-            val args = extractParameters(method, request, controllerInstance)
+        val handler = handler@{ request: HttpRequest ->
+            var args: Map<KParameter, Any?> = emptyMap()
+            try {
+                args = extractParameters(method, fullPath, request, controllerInstance)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                return@handler HttpResponse.badRequest("Invalid parameters: ${e.message}")
+            }
 
-            // Invoke the method on the controller instance with the extracted parameters
+            args.entries.forEach {
+                println(it.key)
+                println(it.value)
+            }
             try {
                 val result = method.callBy(args)
 
-                // Convert the result to HttpResponse if it's not already
                 when (result) {
                     is HttpResponse -> result
                     is String -> HttpResponse.ok(result)
@@ -108,7 +114,8 @@ class IscteAPI(
                     null -> HttpResponse.ok("")
                     else -> {
                         // Create a JSON response for objects
-                        val response = HttpResponse.ok(result)
+                        val jsonResult = JSONInference.convertFrom(result)
+                        val response = HttpResponse.ok(jsonResult)
                         response.headers.add(ContentTypeHeader(ContentType.JSON))
                         response
                     }
@@ -119,7 +126,6 @@ class IscteAPI(
             }
         }
 
-        // Register the route with the router
         when (httpMethod) {
             HttpMethod.GET -> router.get(fullPath, handler)
             HttpMethod.POST -> router.post(fullPath, handler)
@@ -131,16 +137,24 @@ class IscteAPI(
     }
 
     private fun normalizePath(path: String): String {
-        // Remove double slashes and trailing slash
         return path.replace(Regex("/+"), "/").removeSuffix("/").ifEmpty { "/" }
     }
 
     private fun extractParameters(
         method: KFunction<*>,
+        path: String,
         request: HttpRequest,
         instance: Any
     ): Map<KParameter, Any?> {
         val args = mutableMapOf<KParameter, Any?>()
+        val pathParameters = extractPathParameters(path, request.path)
+        val kek = request.path
+        println("printing paths: \n $path \n $kek")
+
+        println("printing path params")
+        pathParameters.entries.forEach{
+            println(it.key + " - > " + it.value)
+        }
 
         // Add the instance parameter first
         method.parameters.find { it.kind == KParameter.Kind.INSTANCE }?.let {
@@ -149,7 +163,6 @@ class IscteAPI(
 
         // Process remaining parameters
         method.parameters.filter { it.kind != KParameter.Kind.INSTANCE }.forEach { parameter ->
-            // Check for parameter annotations
             val paramAnnotation = parameter.findAnnotation<Param>()
             val queryAnnotation = parameter.findAnnotation<Query>()
             val bodyAnnotation = parameter.findAnnotation<Body>()
@@ -157,28 +170,29 @@ class IscteAPI(
             when {
                 // Path parameter
                 paramAnnotation != null -> {
+                    println("found param annotation")
                     val paramName = paramAnnotation.path.firstOrNull() ?: parameter.name ?: ""
-                    val paramValue = request.pathParams[paramName]
+                    val paramValue = pathParameters[paramName]
 
                     if (paramValue != null) {
-                        // Convert parameter to the correct type
                         args[parameter] = convertParameterValue(paramValue, parameter.type)
                     }
                 }
 
                 // Query parameter
                 queryAnnotation != null -> {
+                    println("found query annotation")
                     val queryName = queryAnnotation.path.firstOrNull() ?: parameter.name ?: ""
                     val queryValue = request.queryParams[queryName]
 
                     if (queryValue != null) {
-                        // Convert parameter to the correct type
                         args[parameter] = convertParameterValue(queryValue, parameter.type)
                     }
                 }
 
                 // Body parameter
                 bodyAnnotation != null -> {
+                    println("found body annotation")
                     // Pass the request body to this parameter
                     args[parameter] = request.body
                 }
@@ -196,6 +210,24 @@ class IscteAPI(
         return args
     }
 
+    private fun extractPathParameters(routePath: String, path: String): Map<String, String> {
+        val routeSegments = routePath.trim('/').split('/')
+        val pathSegments = path.trim('/').split('/')
+
+        if (pathSegments.size != routeSegments.size) {
+            throw IllegalArgumentException("Path segments do not match route segments: $routePath vs $path")
+        }
+
+        return routeSegments.zip(pathSegments)
+            .mapNotNull { (routeSeg, pathSeg) ->
+                if (routeSeg.startsWith("{") && routeSeg.endsWith("}")) {
+                    val name = routeSeg.substring(1, routeSeg.length - 1)
+                    name to pathSeg
+                } else null
+            }
+            .toMap()
+    }
+
     private fun convertParameterValue(value: String, type: KType): Any? {
         return when (type.classifier) {
             String::class -> value
@@ -204,13 +236,8 @@ class IscteAPI(
             Double::class -> value.toDoubleOrNull()
             Boolean::class -> value.toBoolean()
             Float::class -> value.toFloatOrNull()
-            // Add more type conversions as needed
             else -> value
         }
-    }
-
-    fun registerControllers(vararg controllers: KClass<*>) {
-        controllers.forEach { controller -> registerController(controller) }
     }
 
     fun addMiddleware(middleware: (HttpRequest) -> HttpRequest) {
@@ -229,9 +256,7 @@ class IscteAPI(
     }
 
     fun start(port: Int = this.port) {
-        // Make sure we've processed all controllers
         println("Starting server with ${controllers.size} registered controllers")
-
         server.start()
         println("Server started on http://$host:$port")
     }
