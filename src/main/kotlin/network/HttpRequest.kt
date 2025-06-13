@@ -26,8 +26,8 @@ data class HttpRequest(
 
             val headers = parseHeaders(headerLines)
 
-            val contentType = (headers.get("Content-Type") as ContentTypeHeader).value
-            val contentLength = (headers.get("Content-Length") as ContentLengthHeader).value ?: 0
+            val contentType = (headers.get("Content-Type") as ContentTypeHeader?)?.value
+            val contentLength = (headers.get("Content-Length") as ContentLengthHeader?)?.value ?: 0
 
             var bodyRaw: String? = null
             var body: Any? = null
@@ -91,6 +91,13 @@ data class HttpRequest(
                     val value = line.substring(splitIndex + 2)
                     headers[key] = value
                 }
+            }
+            println("kek")
+            println(headerLines)
+            println("lol")
+            println(headers)
+            if(headerLines.size > 0 && headers.size == 0){
+                println("something is freaking wrong")
             }
             return HttpHeaders.parse(headers)
         }

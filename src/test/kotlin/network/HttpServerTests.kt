@@ -117,6 +117,7 @@ class HttpServerTests {
         val server = HttpServer(
             "127.0.0.1", 5004,
             { req ->
+                Thread.sleep(100) // Simulate some processing time
                 HttpResponse.ok("Hello from concurrent test")
             }
         )
@@ -127,38 +128,63 @@ class HttpServerTests {
 
         Thread.sleep(200) // Wait for server to start
 
-        val clients = (1..10).map {
-            Socket("127.0.0.1", 5004)
-        }
+        val results = mutableListOf<String?>()
+        val exceptions = mutableListOf<Exception>()
+        val threads = mutableListOf<Thread>()
 
-        clients.forEach { client ->
-            thread {
-                val writer = PrintWriter(client.getOutputStream(), true)
-                val reader = BufferedReader(InputStreamReader(client.getInputStream()))
+        // Create concurrent client threads
+        repeat(10) { index ->
+            val clientThread = thread {
+                try {
+                    val client = Socket("127.0.0.1", 5004)
+                    val writer = PrintWriter(client.getOutputStream(), true)
+                    val reader = BufferedReader(InputStreamReader(client.getInputStream()))
 
-                writer.println("GET / HTTP/1.1")
-                writer.println("Host: 127.0.0.1")
-                writer.println("Content-Type: text/plain")
-                writer.println("Connection: close")
-                writer.println() // End of headers
+                    writer.println("GET /test$index HTTP/1.1")
+                    writer.println("Host: 127.0.0.1")
+                    writer.println("Content-Type: text/plain")
+                    writer.println("Connection: close")
+                    writer.println() // End of headers
 
-                val response = mutableListOf<String>()
-                var line: String? = reader.readLine()
-                while (line != null) {
-                    response.add(line)
-                    if (line.isEmpty()) break // Stop at end of headers
-                    line = reader.readLine()
+                    val response = mutableListOf<String>()
+                    var line: String? = reader.readLine()
+                    while (line != null) {
+                        response.add(line)
+                        if (line.isEmpty()) break // Stop at end of headers
+                        line = reader.readLine()
+                    }
+                    val body = reader.readLine()
+
+                    synchronized(results) {
+                        results.add(body)
+                    }
+
+                    // Verify response in thread
+                    assertTrue(response[0].contains("200"))
+                    assertTrue(body?.contains("Hello from concurrent test") == true)
+
+                    client.close()
+                } catch (e: Exception) {
+                    synchronized(exceptions) {
+                        exceptions.add(e)
+                    }
                 }
-                val body = reader.readLine()
-
-                println(response)
-                println(body)
-                assertTrue(response[0].contains("200"))
-                assertTrue(body?.contains("Hello from concurrent test") == true)
-
-                client.close()
             }
+            threads.add(clientThread)
         }
+
+        // Wait for all threads to complete
+        threads.forEach { it.join() }
+
+        // Assert no exceptions occurred
+        if (exceptions.isNotEmpty()) {
+            throw AssertionError("Concurrent test failed with exceptions: ${exceptions.map { it.message }}")
+        }
+
+        // Assert all requests were handled
+        assertEquals(10, results.size)
+        assertTrue(results.all { it?.contains("Hello from concurrent test") == true })
+
         server.close()
     }
 }

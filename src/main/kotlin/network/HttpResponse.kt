@@ -49,14 +49,10 @@ data class HttpResponse(
     /** Serialize the full HTTP response to a raw string */
     fun serialize(): String {
         val requestRaw = "HTTP/1.1 ${status.code} ${status.reason}"
-
         headers.fillResponseHeaders()
-
         if (body != null)
             encode()
-
         val headersRaw = headers.serialize().map { (name, value) -> "$name: $value" }.joinToString("\r\n")
-
         return listOf(requestRaw, headersRaw, "", bodyRaw ?: "").joinToString("\r\n")
     }
 }

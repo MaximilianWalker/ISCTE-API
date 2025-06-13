@@ -88,11 +88,12 @@ class IscteAPI(
         httpMethod: HttpMethod
     ) {
         val fullPath = normalizePath("$controllerPath/$methodPath")
+        val resultType = method.returnType
 
         println("Registering route: ${httpMethod.name} $fullPath")
 
         val handler = handler@{ request: HttpRequest ->
-            var args: Map<KParameter, Any?> = emptyMap()
+            val args: Map<KParameter, Any?>
             try {
                 args = extractParameters(method, fullPath, request, controllerInstance)
             } catch (e: Exception) {
@@ -100,21 +101,14 @@ class IscteAPI(
                 return@handler HttpResponse.badRequest("Invalid parameters: ${e.message}")
             }
 
-            args.entries.forEach {
-                println(it.key)
-                println(it.value)
-            }
             try {
-                val result = method.callBy(args)
-
-                when (result) {
+                when (val result = method.callBy(args)) {
                     is HttpResponse -> result
                     is String -> HttpResponse.ok(result)
                     is Unit -> HttpResponse.ok("")
                     null -> HttpResponse.ok("")
                     else -> {
-                        // Create a JSON response for objects
-                        val jsonResult = JSONInference.convertFrom(result)
+                        val jsonResult = JSONInference.convertFrom(result, resultType)
                         val response = HttpResponse.ok(jsonResult)
                         response.headers.add(ContentTypeHeader(ContentType.JSON))
                         response
@@ -149,12 +143,6 @@ class IscteAPI(
         val args = mutableMapOf<KParameter, Any?>()
         val pathParameters = extractPathParameters(path, request.path)
         val kek = request.path
-        println("printing paths: \n $path \n $kek")
-
-        println("printing path params")
-        pathParameters.entries.forEach{
-            println(it.key + " - > " + it.value)
-        }
 
         // Add the instance parameter first
         method.parameters.find { it.kind == KParameter.Kind.INSTANCE }?.let {

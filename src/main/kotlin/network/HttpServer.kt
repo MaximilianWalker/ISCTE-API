@@ -118,7 +118,7 @@ class HttpServer(
                 var line: String? = null
                 var contentLength = 0
 
-                while (input.ready() && input.readLine().also { line = it } != null && line!!.isNotEmpty()) {
+                while (input.readLine().also { line = it } != null && line!!.isNotEmpty()) {
                     val parts = line!!.split(":", limit = 2)
                     if (parts.size == 2) {
                         val headerName = parts[0].trim()
