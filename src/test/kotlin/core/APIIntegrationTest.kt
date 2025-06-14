@@ -54,7 +54,7 @@ class APIIntegrationTest {
         assertEquals(200, responseCode)
         
         val response = connection.inputStream.bufferedReader().use { it.readText() }
-        assertTrue(response.contains("John Doe"))
+        assertTrue(response.contains("Jane Smith"))
         assertTrue(response.contains("jane@example.com"))
         
         connection.disconnect()

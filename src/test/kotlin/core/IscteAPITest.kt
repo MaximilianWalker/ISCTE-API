@@ -66,8 +66,13 @@ class IscteAPITest {
     fun `test create new user`() {
         val headers = HttpHeaders()
         headers.add(ContentTypeHeader(ContentType.JSON))
+
+        val jsonObject = JSONObject(
+            "name" to JSONString("New User"),
+            "email" to JSONString("new@example.com"),
+        )
         
-        val request = HttpRequest(HttpMethod.POST, "/api/users", headers, """{"name": "New User", "email": "new@example.com"}""")
+        val request = HttpRequest(HttpMethod.POST, "/api/users", headers, jsonObject)
         val response = api.handleRequest(request)
         
         assertEquals(200, response.status.code)
@@ -77,8 +82,13 @@ class IscteAPITest {
     fun `test update user`() {
         val headers = HttpHeaders()
         headers.add(ContentTypeHeader(ContentType.JSON))
-        
-        val request = HttpRequest(HttpMethod.PUT, "/api/users/1", headers, """{"name": "Updated Name", "email": "updated@example.com"}""")
+
+        val jsonObject = JSONObject(
+            "name" to JSONString("Updated Name"),
+            "email" to JSONString("updated@example.com"),
+        )
+
+        val request = HttpRequest(HttpMethod.PUT, "/api/users/1", headers, jsonObject)
         val response = api.handleRequest(request)
         
         assertEquals(200, response.status.code)

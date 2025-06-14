@@ -17,7 +17,6 @@ data class HttpRequest(
             rawRequest: String,
             contentDeserializers: ContentDeserializers = ContentDeserializers()
         ): HttpRequest {
-            println(rawRequest)
             val (requestLine, headerLines, bodyLines) = splitRawRequest(rawRequest)
 
             val (methodString, path) = parseRequestLine(requestLine)
@@ -26,8 +25,8 @@ data class HttpRequest(
 
             val headers = parseHeaders(headerLines)
 
-            val contentType = (headers.get("Content-Type") as ContentTypeHeader?)?.value
-            val contentLength = (headers.get("Content-Length") as ContentLengthHeader?)?.value ?: 0
+            val contentType = (headers.get("Content-Type") as? ContentTypeHeader)?.value
+            val contentLength = (headers.get("Content-Length") as? ContentLengthHeader)?.value ?: 0
 
             var bodyRaw: String? = null
             var body: Any? = null

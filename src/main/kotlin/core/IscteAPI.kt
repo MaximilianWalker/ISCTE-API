@@ -1,5 +1,6 @@
 package core
 
+import core.exceptions.ParameterTypeMismatchException
 import inference.JSONInference
 import network.HttpMethod
 import network.HttpRequest
@@ -96,6 +97,15 @@ class IscteAPI(
             val args: Map<KParameter, Any?>
             try {
                 args = extractParameters(method, fullPath, request, controllerInstance)
+            } catch (e: ParameterTypeMismatchException) {
+                e.printStackTrace()
+                return@handler HttpResponse.badRequest("Parameter type mismatch: ${e.message}")
+            } catch (e: IllegalArgumentException) {
+                e.printStackTrace()
+                return@handler HttpResponse.badRequest("Invalid argument: ${e.message}")
+            } catch (e: UnsupportedOperationException) {
+                e.printStackTrace()
+                return@handler HttpResponse.internalServerError("Unsupported operation: ${e.message}")
             } catch (e: Exception) {
                 e.printStackTrace()
                 return@handler HttpResponse.badRequest("Invalid parameters: ${e.message}")
@@ -142,7 +152,7 @@ class IscteAPI(
     ): Map<KParameter, Any?> {
         val args = mutableMapOf<KParameter, Any?>()
         val pathParameters = extractPathParameters(path, request.path)
-        val kek = request.path
+        val bodyParamCount = method.parameters.count { it.findAnnotation<Body>() != null }
 
         // Add the instance parameter first
         method.parameters.find { it.kind == KParameter.Kind.INSTANCE }?.let {
@@ -158,7 +168,6 @@ class IscteAPI(
             when {
                 // Path parameter
                 paramAnnotation != null -> {
-                    println("found param annotation")
                     val paramName = paramAnnotation.path.firstOrNull() ?: parameter.name ?: ""
                     val paramValue = pathParameters[paramName]
 
@@ -169,7 +178,6 @@ class IscteAPI(
 
                 // Query parameter
                 queryAnnotation != null -> {
-                    println("found query annotation")
                     val queryName = queryAnnotation.path.firstOrNull() ?: parameter.name ?: ""
                     val queryValue = request.queryParams[queryName]
 
@@ -180,9 +188,7 @@ class IscteAPI(
 
                 // Body parameter
                 bodyAnnotation != null -> {
-                    println("found body annotation")
-                    // Pass the request body to this parameter
-                    args[parameter] = request.body
+                    args[parameter] = extractBodyParameter(request, parameter, bodyParamCount)
                 }
 
                 // If no annotation, try to inject based on type
@@ -228,8 +234,42 @@ class IscteAPI(
         }
     }
 
-    fun addMiddleware(middleware: (HttpRequest) -> HttpRequest) {
-        middlewares.add(middleware)
+    private fun extractBodyParameter(
+        request: HttpRequest,
+        parameter: KParameter,
+        bodyParamCount: Int
+    ): Any? {
+        val parameterType = parameter.type
+        val contentType = (request.headers.get("Content-Type") as? ContentTypeHeader)?.value
+            ?: throw IllegalArgumentException("Content-Type header is missing or invalid.")
+        var value = request.body
+
+        if (bodyParamCount > 1) {
+            when (contentType) {
+                ContentType.JSON -> value = (value as JSONObject)[parameter.name]
+                ContentType.TEXT -> TODO()
+                ContentType.HTML -> TODO()
+                ContentType.FORM -> TODO()
+                ContentType.MULTIPART -> TODO()
+            }
+        }
+
+        return try {
+            when (contentType) {
+                ContentType.JSON -> JSONInference.convertTo(value as JSONElement<*>, parameterType)
+                ContentType.TEXT -> TODO()
+                ContentType.HTML -> TODO()
+                ContentType.FORM -> TODO()
+                ContentType.MULTIPART -> TODO()
+            }
+        } catch (e: Exception) {
+            throw ParameterTypeMismatchException(
+                parameterName = parameter.name ?: "unknown",
+                expectedType = parameterType.toString(),
+                actualValue = value.toString(),
+                message = "Failed to convert body parameter '${parameter.name}' to type '${parameterType}': ${e.message}"
+            )
+        }
     }
 
     fun handleRequest(request: HttpRequest): HttpResponse {
@@ -241,6 +281,10 @@ class IscteAPI(
 
         // Use the router to resolve the request
         return router.resolve(currentRequest)
+    }
+
+    fun addMiddleware(middleware: (HttpRequest) -> HttpRequest) {
+        middlewares.add(middleware)
     }
 
     fun start(port: Int = this.port) {
